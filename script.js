@@ -78,11 +78,17 @@ window.deleteCard = (id) => {
 // Final .apkg Export Logic
 document.getElementById('export-btn').addEventListener('click', async () => {
     if (cards.length === 0) return alert("No cards to export.");
+    if (!window.SQL) return alert("The database engine is still loading...");
 
-    // SAFETY CHECK: Detect library naming variations
-    const AnkiEngine = window.GenAnki || window.genanki;
-    if (!AnkiEngine) {
-        return alert("Anki Library not loaded yet. Please check your internet connection or refresh.");
+    // This is the most bulletproof way to find the library regardless of CDN naming
+    const Anki = window.genanki || 
+                 window.GenAnki || 
+                 (typeof genanki !== 'undefined' ? genanki : null) || 
+                 (typeof GenAnki !== 'undefined' ? GenAnki : null);
+
+    if (!Anki) {
+        console.log("Global objects available:", Object.keys(window).filter(k => k.toLowerCase().includes('anki')));
+        return alert("Anki library not detected. Check console for details.");
     }
 
     const { Package, Deck, Model } = AnkiEngine;
