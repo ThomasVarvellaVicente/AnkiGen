@@ -3,56 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EAP Anki Generator</title>
+    <title>ankIMAT | Atomic Export Pipeline</title>
     <link rel="stylesheet" href="styles.css">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/sql-wasm.min.js"></script>
-    
-    <script src="genanki.js"></script>
-
-    <script>
-        let SQL;
-        const config = {
-            locateFile: filename => `https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/${filename}`
-        };
-        initSqlJs(config).then(function(sql) {
-            SQL = sql;
-            console.log("✅ SQL Engine Ready");
-        }).catch(err => console.error("SQL Load Error:", err));
-    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div class="glass-bg"></div>
+    
     <header>
-        <h1>Exhaustive Atomic Pipeline (EAP)</h1>
-        <p>Total Information Transfer: Source to Anki</p>
+        <div class="logo">ank<span>IMAT</span></div>
+        <p class="subtitle">Atomic Flashcard Export Engine</p>
     </header>
 
     <main id="app">
-        <section id="upload-stage" class="card-box">
-            <h2>1. Import Data</h2>
-            <textarea id="raw-input" placeholder="Front: Concept | Back: Detail | Type: String | Tags: Subject"></textarea>
-            <div class="file-upload-wrapper">
-                <label for="image-upload" class="file-label">Upload Images</label>
-                <input type="file" id="image-upload" multiple accept="image/*">
-                <div id="file-list-count">0 images selected</div>
+        <section id="upload-stage" class="glass-card">
+            <div class="card-header">
+                <span class="step-badge">Step 1</span>
+                <h2>Data Ingestion</h2>
             </div>
-            <button id="process-btn" class="primary-btn">Process & Sift Cards</button>
+            
+            <textarea id="raw-input" placeholder="Front: Concept | Back: Definition | Tags: Subject"></textarea>
+            
+            <div class="upload-controls">
+                <div class="file-input-group">
+                    <label for="image-upload" class="custom-file-btn">
+                        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" /></svg>
+                        Attach Image Assets
+                    </label>
+                    <input type="file" id="image-upload" multiple accept="image/*">
+                    <span id="file-list-count">0 assets ready</span>
+                </div>
+                <button id="process-btn" class="glow-btn">Initialize Pipeline</button>
+            </div>
         </section>
 
-        <section id="sift-stage" class="hidden">
-            <div class="sift-header">
-                <h2>2. Review & Refine</h2>
-                <div class="stats">Approved Cards: <span id="card-count">0</span></div>
+        <section id="sift-stage" class="glass-card hidden">
+            <div class="card-header">
+                <span class="step-badge">Step 2</span>
+                <h2>Atomic Sifting</h2>
+                <div class="badge-count"><span id="card-count">0</span> Cards</div>
             </div>
-            <div id="card-grid" class="grid"></div>
-            <div class="actions">
-                <button id="export-btn" class="success-btn">Export .apkg Package</button>
-                <button id="reset-btn" class="danger-btn">Start Over</button>
+            
+            <div id="card-grid" class="review-grid"></div>
+            
+            <div class="action-footer">
+                <button id="export-btn" class="success-btn">Download Import-Ready CSV</button>
+                <button id="reset-btn" class="ghost-btn">Reset Pipeline</button>
             </div>
         </section>
     </main>
 
-    <script src="script.js" defer></script>
+    <footer class="footer-note">
+        <p><strong>Pro Tip:</strong> After downloading, move your images to Anki's <code>collection.media</code> folder.</p>
+    </footer>
+
+    <script src="script.js"></script>
 </body>
 </html>
