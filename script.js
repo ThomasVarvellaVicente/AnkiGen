@@ -1,7 +1,7 @@
 let cards = [];
 let imageMap = {};
 
-// Stage 1: Processing the NotebookLM Input
+// Stage 1: Processing
 document.getElementById('process-btn').addEventListener('click', () => {
     const text = document.getElementById('raw-input').value;
     if (!text.trim()) return alert("Please paste data first.");
@@ -18,11 +18,11 @@ document.getElementById('process-btn').addEventListener('click', () => {
         };
     });
 
-    if (cards.length === 0) return alert("No valid card format detected. Ensure lines contain the '|' separator.");
+    if (cards.length === 0) return alert("No valid format detected (missing '|')");
     renderSiftingStage();
 });
 
-// Handling Image Files
+// Handling Images
 document.getElementById('image-upload').addEventListener('change', (e) => {
     const files = e.target.files;
     for (let file of files) {
@@ -31,26 +31,20 @@ document.getElementById('image-upload').addEventListener('change', (e) => {
     document.getElementById('file-list-count').innerText = `${Object.keys(imageMap).length} images mapped.`;
 });
 
-// UI Rendering for the Sifting Stage
 function renderSiftingStage() {
     document.getElementById('upload-stage').classList.add('hidden');
     document.getElementById('sift-stage').classList.remove('hidden');
-    
     const grid = document.getElementById('card-grid');
     grid.innerHTML = '';
-    
     cards.forEach(card => {
         const cardEl = document.createElement('div');
         cardEl.className = 'flashcard';
-        
-        // Preview logic
         let imgHtml = '';
         const possibleImg = imageMap[card.front] || imageMap[card.back];
         if (possibleImg) {
             const url = URL.createObjectURL(possibleImg);
-            imgHtml = `<img src="${url}" class="card-preview-img">`;
+            imgHtml = `<img src="${url}" class="card-preview-img" style="max-width:100%; margin-top:10px;">`;
         }
-
         cardEl.innerHTML = `
             <button class="delete-btn" onclick="deleteCard(${card.id})">✕</button>
             <div class="card-type">${card.type.toUpperCase()}</div>
@@ -61,7 +55,6 @@ function renderSiftingStage() {
         `;
         grid.appendChild(cardEl);
     });
-    
     document.getElementById('card-count').innerText = cards.length;
 }
 
@@ -75,68 +68,65 @@ window.deleteCard = (id) => {
     renderSiftingStage();
 };
 
-// Final .apkg Export Logic
+// --- THE FIX IS IN THIS SECTION ---
 document.getElementById('export-btn').addEventListener('click', async () => {
     if (cards.length === 0) return alert("No cards to export.");
-    if (!window.SQL) return alert("The database engine is still loading...");
+    if (!window.SQL) return alert("Database engine (SQL) is still loading...");
 
-    // This is the most bulletproof way to find the library regardless of CDN naming
-    const Anki = window.genanki || 
-                 window.GenAnki || 
-                 (typeof genanki !== 'undefined' ? genanki : null) || 
-                 (typeof GenAnki !== 'undefined' ? GenAnki : null);
+    // 1. Unified detection
+    const AnkiLib = window.genanki || window.GenAnki || (typeof genanki !== 'undefined' ? genanki : null);
 
-    if (!Anki) {
-        console.log("Global objects available:", Object.keys(window).filter(k => k.toLowerCase().includes('anki')));
-        return alert("Anki library not detected. Check console for details.");
+    if (!AnkiLib) {
+        return alert("Anki Library not loaded yet. Please check your internet connection or refresh.");
     }
 
-    const { Package, Deck, Model } = AnkiEngine;
-
-    const model = new Model({
-        name: "EAP_Model",
-        id: "1616161616",
-        flds: [{ name: "Front" }, { name: "Back" }, { name: "Media" }],
-        tmpls: [{
-            name: "Default",
-            qfmt: '<div style="text-align:center; font-family: Arial; font-size:24px;">{{Front}}</div><div style="margin-top:20px; text-align:center;">{{Media}}</div>',
-            afmt: '{{FrontSide}}<hr id="answer"><div style="text-align:center; font-family: Arial; font-size:20px;">{{Back}}</div>',
-        }],
-    });
-
-    const deck = new Deck(Date.now(), "EAP Generated Deck");
-
-    cards.forEach(card => {
-        let mediaTag = "";
-        // Mapping image assets based on filenames mentioned in the text
-        if (imageMap[card.front]) {
-            mediaTag = `<img src="${card.front}">`;
-        } else if (imageMap[card.back]) {
-            mediaTag = `<img src="${card.back}">`;
-        }
-
-        deck.addNote(model.note([card.front, card.back, mediaTag], [card.tags]));
-    });
-
-    const pkg = new Package();
-    pkg.addDeck(deck);
-    
-    // Attach image binary data to the final package
-    Object.keys(imageMap).forEach(name => {
-        pkg.addMedia(imageMap[name], name);
-    });
-
     try {
+        // 2. Use the detected library to extract the classes
+        const { Package, Deck, Model } = AnkiLib;
+
+        const model = new Model({
+            name: "EAP_Model",
+            id: "1616161616",
+            flds: [{ name: "Front" }, { name: "Back" }, { name: "Media" }],
+            tmpls: [{
+                name: "Default",
+                qfmt: '<div style="text-align:center; font-family: Arial; font-size:24px;">{{Front}}</div><div style="margin-top:20px; text-align:center;">{{Media}}</div>',
+                afmt: '{{FrontSide}}<hr id="answer"><div style="text-align:center; font-family: Arial; font-size:20px;">{{Back}}</div>',
+            }],
+        });
+
+        const deck = new Deck(Date.now(), "EAP Generated Deck");
+
+        cards.forEach(card => {
+            let mediaTag = "";
+            if (imageMap[card.front]) {
+                mediaTag = `<img src="${card.front}">`;
+            } else if (imageMap[card.back]) {
+                mediaTag = `<img src="${card.back}">`;
+            }
+            deck.addNote(model.note([card.front, card.back, mediaTag], [card.tags]));
+        });
+
+        const pkg = new Package();
+        pkg.addDeck(deck);
+        
+        Object.keys(imageMap).forEach(name => {
+            pkg.addMedia(imageMap[name], name);
+        });
+
         const zip = await pkg.writeToFile();
         const blob = new Blob([zip], { type: "application/octet-stream" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "My_EAP_Deck.apkg";
+        link.download = "EAP_Study_Deck.apkg";
         link.click();
+
     } catch (err) {
-        console.error(err);
+        console.error("Export Error:", err);
         alert("Error generating deck: " + err.message);
     }
 });
 
-document.getElementById('reset-btn').addEventListener('click', () => location.reload());
+document.getElementById('reset-btn').addEventListener('click', () => {
+    if(confirm("Start over?")) location.reload();
+});
