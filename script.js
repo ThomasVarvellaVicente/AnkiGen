@@ -1,7 +1,7 @@
 let cards = [];
 let imageMap = {};
 
-// Stage 1: Processing
+// --- STAGE 1: PARSING ---
 document.getElementById('process-btn').addEventListener('click', () => {
     const text = document.getElementById('raw-input').value;
     if (!text.trim()) return alert("Please paste data first.");
@@ -18,24 +18,25 @@ document.getElementById('process-btn').addEventListener('click', () => {
         };
     });
 
-    if (cards.length === 0) return alert("No valid format detected (missing '|')");
+    if (cards.length === 0) return alert("No valid format detected (ensure you use the '|' separator)");
     renderSiftingStage();
 });
 
-// Handling Images
+// --- STAGE 2: IMAGES ---
 document.getElementById('image-upload').addEventListener('change', (e) => {
-    const files = e.target.files;
-    for (let file of files) {
+    for (let file of e.target.files) {
         imageMap[file.name] = file;
     }
     document.getElementById('file-list-count').innerText = `${Object.keys(imageMap).length} images mapped.`;
 });
 
+// --- STAGE 3: UI ---
 function renderSiftingStage() {
     document.getElementById('upload-stage').classList.add('hidden');
     document.getElementById('sift-stage').classList.remove('hidden');
     const grid = document.getElementById('card-grid');
     grid.innerHTML = '';
+    
     cards.forEach(card => {
         const cardEl = document.createElement('div');
         cardEl.className = 'flashcard';
@@ -68,20 +69,20 @@ window.deleteCard = (id) => {
     renderSiftingStage();
 };
 
-// --- THE FIX IS IN THIS SECTION ---
+// --- STAGE 4: EXPORT ---
 document.getElementById('export-btn').addEventListener('click', async () => {
     if (cards.length === 0) return alert("No cards to export.");
-    if (!window.SQL) return alert("Database engine (SQL) is still loading...");
+    if (!window.SQL) return alert("SQL Engine is still loading. Wait 2 seconds.");
 
-    // 1. Unified detection
-    const AnkiLib = window.genanki || window.GenAnki || (typeof genanki !== 'undefined' ? genanki : null);
+    // Detect the library from your local genanki.js
+    const AnkiLib = window.Anki || window.genanki || window.GenAnki;
 
     if (!AnkiLib) {
-        return alert("Anki Library not loaded yet. Please check your internet connection or refresh.");
+        console.error("DEBUG: window.Anki is", window.Anki);
+        return alert("Anki Library not loaded yet. Ensure genanki.js is in your GitHub folder and refresh.");
     }
 
     try {
-        // 2. Use the detected library to extract the classes
         const { Package, Deck, Model } = AnkiLib;
 
         const model = new Model({
@@ -99,31 +100,25 @@ document.getElementById('export-btn').addEventListener('click', async () => {
 
         cards.forEach(card => {
             let mediaTag = "";
-            if (imageMap[card.front]) {
-                mediaTag = `<img src="${card.front}">`;
-            } else if (imageMap[card.back]) {
-                mediaTag = `<img src="${card.back}">`;
-            }
+            if (imageMap[card.front]) mediaTag = `<img src="${card.front}">`;
+            else if (imageMap[card.back]) mediaTag = `<img src="${card.back}">`;
             deck.addNote(model.note([card.front, card.back, mediaTag], [card.tags]));
         });
 
         const pkg = new Package();
         pkg.addDeck(deck);
-        
-        Object.keys(imageMap).forEach(name => {
-            pkg.addMedia(imageMap[name], name);
-        });
+        Object.keys(imageMap).forEach(name => pkg.addMedia(imageMap[name], name));
 
         const zip = await pkg.writeToFile();
         const blob = new Blob([zip], { type: "application/octet-stream" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "EAP_Study_Deck.apkg";
+        link.download = "EAP_Deck.apkg";
         link.click();
 
     } catch (err) {
         console.error("Export Error:", err);
-        alert("Error generating deck: " + err.message);
+        alert("Export failed: " + err.message);
     }
 });
 
