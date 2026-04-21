@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anki-EAP Generator</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Exhaustive Atomic Pipeline (EAP) Tool</h1>
+        <p>Convert NotebookLM output into .apkg packages</p>
+    </header>
+
+    <main id="app">
+        <section id="upload-stage" class="card-box">
+            <h2>1. Import Data</h2>
+            <textarea id="raw-input" placeholder="Paste NotebookLM output here...&#10;Front: Term | Back: Definition | Type: String | Tags: Anatomy"></textarea>
+            
+            <div class="file-upload-wrapper">
+                <label for="image-upload">Upload Images (Optional)</label>
+                <input type="file" id="image-upload" multiple accept="image/*">
+            </div>
+            
+            <button id="process-btn" class="primary-btn">Process & Sift</button>
+        </section>
+
+        <section id="sift-stage" class="hidden">
+            <div class="sift-header">
+                <h2>2. Sift & Edit Cards</h2>
+                <div class="stats">Total: <span id="card-count">0</span></div>
+            </div>
+            <div id="card-grid" class="grid"></div>
+            <div class="actions">
+                <button id="export-btn" class="success-btn">Generate .apkg</button>
+                <button id="reset-btn" class="danger-btn">Clear All</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
