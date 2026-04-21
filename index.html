@@ -4,31 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EAP Anki Generator</title>
-    
     <link rel="stylesheet" href="styles.css">
-
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/sql-wasm.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/genanki@1.0.2/dist/genanki.min.js"></script>
+    
+    <script src="genanki.js"></script>
 
     <script>
         let SQL;
-        // This tells the browser where to find the database 'brain' (.wasm) on the web
         const config = {
             locateFile: filename => `https://cdn.jsdelivr.net/npm/sql.js@1.6.2/dist/${filename}`
         };
-
         initSqlJs(config).then(function(sql) {
             SQL = sql;
-            console.log("✅ Anki Engine Ready (CDN Mode)");
-        }).catch(err => {
-            console.error("❌ Engine Load Failure:", err);
-            alert("Failed to load database engine. Please check your internet or disable ad-blockers.");
-        });
+            console.log("✅ SQL Engine Ready");
+        }).catch(err => console.error("SQL Load Error:", err));
     </script>
 </head>
 <body>
-
     <header>
         <h1>Exhaustive Atomic Pipeline (EAP)</h1>
         <p>Total Information Transfer: Source to Anki</p>
@@ -37,16 +31,12 @@
     <main id="app">
         <section id="upload-stage" class="card-box">
             <h2>1. Import Data</h2>
-            <p class="instruction">Paste your piped data below and upload your image assets.</p>
-            
             <textarea id="raw-input" placeholder="Front: Concept | Back: Detail | Type: String | Tags: Subject"></textarea>
-            
             <div class="file-upload-wrapper">
-                <label for="image-upload" class="file-label">Upload Image Assets</label>
+                <label for="image-upload" class="file-label">Upload Images</label>
                 <input type="file" id="image-upload" multiple accept="image/*">
                 <div id="file-list-count">0 images selected</div>
             </div>
-            
             <button id="process-btn" class="primary-btn">Process & Sift Cards</button>
         </section>
 
@@ -55,9 +45,7 @@
                 <h2>2. Review & Refine</h2>
                 <div class="stats">Approved Cards: <span id="card-count">0</span></div>
             </div>
-            
             <div id="card-grid" class="grid"></div>
-            
             <div class="actions">
                 <button id="export-btn" class="success-btn">Export .apkg Package</button>
                 <button id="reset-btn" class="danger-btn">Start Over</button>
@@ -65,7 +53,6 @@
         </section>
     </main>
 
-    <script src="script.js"></script>
-
+    <script src="script.js" defer></script>
 </body>
 </html>
