@@ -1,104 +1,84 @@
 let cards = [];
-let imageMap = {};
+let imageAssets = new Set();
 
-// --- 1. DATA PROCESSING ---
+// INITIALIZE PIPELINE
 document.getElementById('process-btn').addEventListener('click', () => {
-    const text = document.getElementById('raw-input').value;
-    if (!text.trim()) return alert("Please enter data.");
+    const rawData = document.getElementById('raw-input').value.trim();
+    if (!rawData) return;
 
-    const lines = text.split('\n');
-    cards = lines.filter(line => line.includes('|')).map((line, index) => {
+    cards = rawData.split('\n').filter(l => l.includes('|')).map((line, i) => {
         const parts = line.split('|').map(p => p.trim());
         return {
-            id: Date.now() + index,
+            id: Date.now() + i,
             front: parts[0] ? parts[0].replace(/Front:\s*/i, '') : '',
             back: parts[1] ? parts[1].replace(/Back:\s*/i, '') : '',
             tags: parts[2] ? parts[2].replace(/Tags:\s*/i, '') : 'General'
         };
     });
 
-    if (cards.length === 0) return alert("Format Error: Use '|' to separate fields.");
-    renderSiftingStage();
+    if (cards.length > 0) renderReviewStage();
 });
 
-// --- 2. ASSET MAPPING ---
+// ASSET MANAGEMENT
 document.getElementById('image-upload').addEventListener('change', (e) => {
-    for (let file of e.target.files) {
-        imageMap[file.name] = file;
-    }
-    document.getElementById('file-list-count').innerText = `${Object.keys(imageMap).length} assets ready`;
+    for (let file of e.target.files) imageAssets.add(file.name.trim());
+    document.getElementById('file-list-count').innerText = `${imageAssets.size} assets mapped`;
 });
 
-// --- 3. UI RENDERING ---
-function renderSiftingStage() {
-    document.getElementById('upload-stage').style.display = 'none';
+// RENDER CARDS
+function renderReviewStage() {
+    document.getElementById('upload-stage').classList.add('hidden');
     document.getElementById('sift-stage').classList.remove('hidden');
+    
     const grid = document.getElementById('card-grid');
     grid.innerHTML = '';
-    
-    cards.forEach(card => {
-        const cardEl = document.createElement('div');
-        cardEl.className = 'review-card';
-        
-        // Check for images in both fields
-        const frontImg = imageMap[card.front.trim()] ? `<div class="img-preview">📸 ${card.front}</div>` : '';
-        const backImg = imageMap[card.back.trim()] ? `<div class="img-preview">📸 ${card.back}</div>` : '';
 
-        cardEl.innerHTML = `
-            <div class="card-controls">
+    cards.forEach(card => {
+        const hasFrontImg = imageAssets.has(card.front.trim());
+        const hasBackImg = imageAssets.has(card.back.trim());
+
+        const cardNode = document.createElement('div');
+        cardNode.className = 'review-card';
+        cardNode.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
                 <span class="tag-pill">#${card.tags}</span>
-                <button class="delete-icon" onclick="deleteCard(${card.id})">✕</button>
+                <button onclick="removeCard(${card.id})" style="background:none; border:none; color:#ef4444; cursor:pointer;">✕</button>
             </div>
-            <div class="field-label">Front</div>
-            <input type="text" value="${card.front}" onchange="updateCard(${card.id}, 'front', this.value)">
-            ${frontImg}
-            <div class="field-label">Back</div>
-            <textarea onchange="updateCard(${card.id}, 'back', this.value)">${card.back}</textarea>
-            ${backImg}
+            <label style="font-size:0.7rem; color:#94a3b8">FRONT</label>
+            <input type="text" value="${card.front}" onchange="editCard(${card.id}, 'front', this.value)">
+            ${hasFrontImg ? `<div style="font-size:0.75rem; color:#22d3ee; margin-top:5px;">📸 Linked: ${card.front}</div>` : ''}
+            
+            <div style="margin-top:15px;">
+                <label style="font-size:0.7rem; color:#94a3b8">BACK</label>
+                <textarea onchange="editCard(${card.id}, 'back', this.value)">${card.back}</textarea>
+                ${hasBackImg ? `<div style="font-size:0.75rem; color:#22d3ee; margin-top:5px;">📸 Linked: ${card.back}</div>` : ''}
+            </div>
         `;
-        grid.appendChild(cardEl);
+        grid.appendChild(cardNode);
     });
     document.getElementById('card-count').innerText = cards.length;
 }
 
-window.updateCard = (id, field, value) => {
-    const card = cards.find(c => c.id === id);
-    if (card) card[field] = value;
-};
+// EDITING FUNCTIONS
+window.editCard = (id, field, val) => { const c = cards.find(x => x.id === id); if(c) c[field] = val; };
+window.removeCard = (id) => { cards = cards.filter(x => x.id !== id); renderReviewStage(); };
 
-window.deleteCard = (id) => {
-    cards = cards.filter(c => c.id !== id);
-    renderSiftingStage();
-};
-
-// --- 4. CSV EXPORT (PRODUCTION READY) ---
+// FINAL CSV EXPORT
 document.getElementById('export-btn').addEventListener('click', () => {
-    if (cards.length === 0) return;
+    let output = ["#separator:Semicolon", "#html:true", "#tags column:3", "Front;Back;Tags"];
 
-    // Header row with Anki formatting directives
-    let csvRows = ["#separator:Semicolon", "#html:true", "#tags column:3"];
-    csvRows.push("Front;Back;Tags"); 
-
-    cards.forEach(card => {
-        let f = card.front;
-        let b = card.back;
-
-        // Convert image filenames to Anki HTML tags
-        if (imageMap[f.trim()]) f = `<img src="${f.trim()}">`;
-        if (imageMap[b.trim()]) b = `<img src="${b.trim()}">`;
-
-        // Wrap in quotes and escape internal quotes for CSV safety
-        const safeF = `"${f.replace(/"/g, '""')}"`;
-        const safeB = `"${b.replace(/"/g, '""')}"`;
-        const safeT = `"${card.tags.replace(/"/g, '""')}"`;
-
-        csvRows.push(`${safeF};${safeB};${safeT}`);
+    cards.forEach(c => {
+        let f = imageAssets.has(c.front.trim()) ? `<img src="${c.front.trim()}">` : c.front;
+        let b = imageAssets.has(c.back.trim()) ? `<img src="${c.back.trim()}">` : c.back;
+        
+        const row = [f, b, c.tags].map(v => `"${v.replace(/"/g, '""')}"`).join(';');
+        output.push(row);
     });
 
-    const csvBlob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([output.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(csvBlob);
-    link.download = `ankIMAT_Export_${Date.now()}.csv`;
+    link.href = URL.createObjectURL(blob);
+    link.download = `ankIMAT_${Date.now()}.csv`;
     link.click();
 });
 
