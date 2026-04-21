@@ -11,13 +11,14 @@ document.getElementById('process-btn').addEventListener('click', () => {
         const parts = line.split('|').map(p => p.trim());
         return {
             id: Date.now() + index,
-            front: parts[0].replace(/Front:\s*/i, '').trim(),
-            back: parts[1].replace(/Back:\s*/i, '').trim(),
-            type: parts[2].replace(/Type:\s*/i, '').trim(),
-            tags: parts[3].replace(/Tags:\s*/i, '').trim()
+            front: parts[0] ? parts[0].replace(/Front:\s*/i, '').trim() : '',
+            back: parts[1] ? parts[1].replace(/Back:\s*/i, '').trim() : '',
+            type: parts[2] ? parts[2].replace(/Type:\s*/i, '').trim() : 'String',
+            tags: parts[3] ? parts[3].replace(/Tags:\s*/i, '').trim() : 'General'
         };
     });
 
+    if (cards.length === 0) return alert("No valid card format detected. Ensure lines contain the '|' separator.");
     renderSiftingStage();
 });
 
@@ -78,7 +79,13 @@ window.deleteCard = (id) => {
 document.getElementById('export-btn').addEventListener('click', async () => {
     if (cards.length === 0) return alert("No cards to export.");
 
-    const { Package, Deck, Model } = GenAnki;
+    // SAFETY CHECK: Detect library naming variations
+    const AnkiEngine = window.GenAnki || window.genanki;
+    if (!AnkiEngine) {
+        return alert("Anki Library not loaded yet. Please check your internet connection or refresh.");
+    }
+
+    const { Package, Deck, Model } = AnkiEngine;
 
     const model = new Model({
         name: "EAP_Model",
@@ -86,8 +93,8 @@ document.getElementById('export-btn').addEventListener('click', async () => {
         flds: [{ name: "Front" }, { name: "Back" }, { name: "Media" }],
         tmpls: [{
             name: "Default",
-            qfmt: '<div style="text-align:center; font-size:24px;">{{Front}}</div><div style="margin-top:20px;">{{Media}}</div>',
-            afmt: '{{FrontSide}}<hr id="answer"><div style="text-align:center; font-size:20px;">{{Back}}</div>',
+            qfmt: '<div style="text-align:center; font-family: Arial; font-size:24px;">{{Front}}</div><div style="margin-top:20px; text-align:center;">{{Media}}</div>',
+            afmt: '{{FrontSide}}<hr id="answer"><div style="text-align:center; font-family: Arial; font-size:20px;">{{Back}}</div>',
         }],
     });
 
@@ -95,9 +102,12 @@ document.getElementById('export-btn').addEventListener('click', async () => {
 
     cards.forEach(card => {
         let mediaTag = "";
-        // If the front or back string matches an uploaded filename
-        if (imageMap[card.front]) mediaTag = `<img src="${card.front}">`;
-        else if (imageMap[card.back]) mediaTag = `<img src="${card.back}">`;
+        // Mapping image assets based on filenames mentioned in the text
+        if (imageMap[card.front]) {
+            mediaTag = `<img src="${card.front}">`;
+        } else if (imageMap[card.back]) {
+            mediaTag = `<img src="${card.back}">`;
+        }
 
         deck.addNote(model.note([card.front, card.back, mediaTag], [card.tags]));
     });
@@ -105,15 +115,22 @@ document.getElementById('export-btn').addEventListener('click', async () => {
     const pkg = new Package();
     pkg.addDeck(deck);
     
-    // Attach images to package
-    Object.keys(imageMap).forEach(name => pkg.addMedia(imageMap[name], name));
+    // Attach image binary data to the final package
+    Object.keys(imageMap).forEach(name => {
+        pkg.addMedia(imageMap[name], name);
+    });
 
-    const zip = await pkg.writeToFile();
-    const blob = new Blob([zip], { type: "application/octet-stream" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "My_EAP_Deck.apkg";
-    link.click();
+    try {
+        const zip = await pkg.writeToFile();
+        const blob = new Blob([zip], { type: "application/octet-stream" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "My_EAP_Deck.apkg";
+        link.click();
+    } catch (err) {
+        console.error(err);
+        alert("Error generating deck: " + err.message);
+    }
 });
 
 document.getElementById('reset-btn').addEventListener('click', () => location.reload());
